@@ -11,6 +11,7 @@ name = "sticker2"
 crate-type = ["cdylib"]
 
 [dependencies]
+conllu = "0.5"
 
 [dependencies.pyo3]
 version = "0.9"
