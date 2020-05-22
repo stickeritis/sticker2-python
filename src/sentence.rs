@@ -325,3 +325,110 @@ impl PyObjectProtocol for PyFeatures {
         self.__repr__()
     }
 }
+
+/// Miscellaneous features.
+#[pyclass(name=Misc)]
+pub struct PyMisc {
+    sent: Rc<RefCell<Sentence>>,
+    token_idx: usize,
+}
+
+#[pymethods]
+impl PyMisc {
+    fn contains(&self, name: &str) -> PyResult<bool> {
+        let token = self.token()?;
+        Ok(token.misc().get(name).is_some())
+    }
+}
+
+impl PyMisc {
+    fn token(&self) -> PyResult<Ref<Token>> {
+        let sent = self.sent.borrow();
+
+        if sent[self.token_idx].is_root() {
+            return Err(exceptions::KeyError::py_err(
+                "root node does not have misc features",
+            ));
+        }
+
+        let token = Ref::map(sent, |sent| sent[self.token_idx].token().unwrap());
+
+        Ok(token)
+    }
+
+    fn token_mut(&mut self) -> PyResult<RefMut<Token>> {
+        let sent = self.sent.borrow_mut();
+
+        if sent[self.token_idx].is_root() {
+            return Err(exceptions::KeyError::py_err(
+                "root node does not have misc features",
+            ));
+        }
+
+        let token = RefMut::map(sent, |sent| sent[self.token_idx].token_mut().unwrap());
+
+        Ok(token)
+    }
+}
+
+#[pyproto]
+impl PyMappingProtocol for PyMisc {
+    fn __delitem__(&mut self, name: &str) -> PyResult<()> {
+        let mut token = self.token_mut()?;
+
+        let _ = token.misc_mut().remove(name).ok_or_else(|| {
+            exceptions::KeyError::py_err(format!(
+                "misc feature set does not contain feature: {}",
+                name
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    fn __getitem__(&self, name: &str) -> PyResult<String> {
+        let token = self.token()?;
+
+        token
+            .misc()
+            .get(name)
+            // On the Rust side, we can have features without values.
+            // Not sure if/how we want to handle this in Python.
+            .and_then(|feature| feature.as_ref())
+            .map(ToOwned::to_owned)
+            .ok_or_else(|| exceptions::KeyError::py_err(format!("unknown feature: {}", name)))
+    }
+
+    fn __setitem__(&mut self, name: String, value: String) -> PyResult<()> {
+        let mut token = self.token_mut()?;
+
+        token.misc_mut().insert(name, Some(value));
+
+        Ok(())
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for PyMisc {
+    fn __repr__(&self) -> PyResult<String> {
+        let dict_repr = match &self.sent.borrow()[self.token_idx] {
+            Node::Root => String::new(),
+            Node::Token(token) => {
+                let fvals = token
+                    .misc()
+                    .iter()
+                    // Filter out features without values.
+                    .filter_map(|(f, v)| v.as_ref().map(|v| (f, v)))
+                    .map(|(f, v)| format!("\"{}\": \"{}\"", f, v))
+                    .collect::<Vec<_>>();
+                fvals.join(", ")
+            }
+        };
+
+        Ok(format!("Misc {{{}}}", dict_repr))
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        self.__repr__()
+    }
+}
