@@ -34,8 +34,20 @@ impl PySentence {
 }
 
 impl PySentence {
-    pub fn inner(&self) -> RefMut<Sentence> {
+    pub fn inner(&self) -> Ref<Sentence> {
+        self.inner.borrow()
+    }
+
+    pub fn inner_mut(&self) -> RefMut<Sentence> {
         self.inner.borrow_mut()
+    }
+}
+
+impl From<Sentence> for PySentence {
+    fn from(sentence: Sentence) -> Self {
+        PySentence {
+            inner: Rc::new(RefCell::new(sentence)),
+        }
     }
 }
 
@@ -130,7 +142,7 @@ pub struct PyToken {
 
 #[pymethods]
 impl PyToken {
-    /// Get the features of a token.
+    /// Get the morphological features of a token.
     #[getter]
     fn get_features(&self) -> PyFeatures {
         PyFeatures {
@@ -174,6 +186,15 @@ impl PyToken {
         match self.sent.borrow()[self.token_idx] {
             Node::Token(ref token) => token.lemma().map(ToOwned::to_owned),
             Node::Root => None,
+        }
+    }
+
+    /// Get miscellaneous features of a token.
+    #[getter]
+    fn get_misc(&self) -> PyMisc {
+        PyMisc {
+            sent: self.sent.clone(),
+            token_idx: self.token_idx,
         }
     }
 
@@ -227,7 +248,7 @@ impl PyObjectProtocol for PyToken {
     }
 }
 
-/// Token that can be annotated.
+/// Morphological features.
 #[pyclass(name=Features)]
 pub struct PyFeatures {
     sent: Rc<RefCell<Sentence>>,

@@ -11,8 +11,11 @@ name = "sticker2"
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "1"
 conllu = "0.5"
+serde_yaml = "0.8"
 sticker2 = { version = "0.3", default-features = false }
+tch = "= 0.1.7"
 
 [dependencies.pyo3]
 version = "0.9"
