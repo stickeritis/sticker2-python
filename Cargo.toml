@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 conllu = "0.5"
+sticker2 = { version = "0.3", default-features = false }
 
 [dependencies.pyo3]
 version = "0.9"
