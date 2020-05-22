@@ -10,8 +10,6 @@ use pyo3::class::sequence::PySequenceProtocol;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 
-use crate::util::ListVec;
-
 /// Sentence that can be annotated.
 #[pyclass(name=Sentence)]
 pub struct PySentence {
@@ -26,12 +24,8 @@ impl PySentence {
     /// provided, but the number or tags is not equal to the number of
     /// tokens.
     #[new]
-    fn __new__(forms: ListVec<&str>) -> Self {
-        let sent = forms
-            .into_inner()
-            .into_iter()
-            .map(Token::new)
-            .collect::<Sentence>();
+    fn __new__(forms: Vec<&str>) -> Self {
+        let sent = forms.into_iter().map(Token::new).collect::<Sentence>();
 
         PySentence {
             inner: Rc::new(sent.into()),
