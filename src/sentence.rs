@@ -11,7 +11,7 @@ use pyo3::exceptions;
 use pyo3::prelude::*;
 
 /// Sentence that can be annotated.
-#[pyclass(name=Sentence)]
+#[pyclass(name=Sentence,unsendable)]
 pub struct PySentence {
     inner: Rc<RefCell<Sentence>>,
 }
@@ -90,7 +90,9 @@ impl PySequenceProtocol for PySentence {
 
     fn __getitem__(&self, idx: isize) -> PyResult<PyToken> {
         if idx >= self.inner.borrow().len() as isize || idx < 0 {
-            Err(exceptions::IndexError::py_err("token index out of range"))
+            Err(exceptions::PyIndexError::new_err(
+                "token index out of range",
+            ))
         } else {
             Ok(PyToken {
                 sent: self.inner.clone(),
@@ -103,7 +105,7 @@ impl PySequenceProtocol for PySentence {
 /// Iterator over the nodes in a dependency graph.
 ///
 /// The nodes are returned in sentence-linear order.
-#[pyclass(name=SentenceIterator)]
+#[pyclass(name=SentenceIterator,unsendable)]
 pub struct PySentenceIterator {
     sent: Rc<RefCell<Sentence>>,
     idx: usize,
@@ -134,7 +136,7 @@ impl PyIterProtocol for PySentenceIterator {
 }
 
 /// Token that can be annotated.
-#[pyclass(name=Token)]
+#[pyclass(name=Token,unsendable)]
 pub struct PyToken {
     sent: Rc<RefCell<Sentence>>,
     token_idx: usize,
@@ -249,7 +251,7 @@ impl PyObjectProtocol for PyToken {
 }
 
 /// Morphological features.
-#[pyclass(name=Features)]
+#[pyclass(name=Features,unsendable)]
 pub struct PyFeatures {
     sent: Rc<RefCell<Sentence>>,
     token_idx: usize,
@@ -268,7 +270,7 @@ impl PyFeatures {
         let sent = self.sent.borrow();
 
         if sent[self.token_idx].is_root() {
-            return Err(exceptions::KeyError::py_err(
+            return Err(exceptions::PyKeyError::new_err(
                 "root node does not have features",
             ));
         }
@@ -282,7 +284,7 @@ impl PyFeatures {
         let sent = self.sent.borrow_mut();
 
         if sent[self.token_idx].is_root() {
-            return Err(exceptions::KeyError::py_err(
+            return Err(exceptions::PyKeyError::new_err(
                 "root node does not have features",
             ));
         }
@@ -299,7 +301,10 @@ impl PyMappingProtocol for PyFeatures {
         let mut token = self.token_mut()?;
 
         let _ = token.features_mut().remove(name).ok_or_else(|| {
-            exceptions::KeyError::py_err(format!("features set does not contain feature: {}", name))
+            exceptions::PyKeyError::new_err(format!(
+                "features set does not contain feature: {}",
+                name
+            ))
         })?;
 
         Ok(())
@@ -312,7 +317,7 @@ impl PyMappingProtocol for PyFeatures {
             .features()
             .get(name)
             .map(ToOwned::to_owned)
-            .ok_or_else(|| exceptions::KeyError::py_err(format!("unknown feature: {}", name)))
+            .ok_or_else(|| exceptions::PyKeyError::new_err(format!("unknown feature: {}", name)))
     }
 
     fn __setitem__(&mut self, name: String, value: String) -> PyResult<()> {
@@ -348,7 +353,7 @@ impl PyObjectProtocol for PyFeatures {
 }
 
 /// Miscellaneous features.
-#[pyclass(name=Misc)]
+#[pyclass(name=Misc,unsendable)]
 pub struct PyMisc {
     sent: Rc<RefCell<Sentence>>,
     token_idx: usize,
@@ -367,7 +372,7 @@ impl PyMisc {
         let sent = self.sent.borrow();
 
         if sent[self.token_idx].is_root() {
-            return Err(exceptions::KeyError::py_err(
+            return Err(exceptions::PyKeyError::new_err(
                 "root node does not have misc features",
             ));
         }
@@ -381,7 +386,7 @@ impl PyMisc {
         let sent = self.sent.borrow_mut();
 
         if sent[self.token_idx].is_root() {
-            return Err(exceptions::KeyError::py_err(
+            return Err(exceptions::PyKeyError::new_err(
                 "root node does not have misc features",
             ));
         }
@@ -398,7 +403,7 @@ impl PyMappingProtocol for PyMisc {
         let mut token = self.token_mut()?;
 
         let _ = token.misc_mut().remove(name).ok_or_else(|| {
-            exceptions::KeyError::py_err(format!(
+            exceptions::PyKeyError::new_err(format!(
                 "misc feature set does not contain feature: {}",
                 name
             ))
@@ -417,7 +422,7 @@ impl PyMappingProtocol for PyMisc {
             // Not sure if/how we want to handle this in Python.
             .and_then(|feature| feature.as_ref())
             .map(ToOwned::to_owned)
-            .ok_or_else(|| exceptions::KeyError::py_err(format!("unknown feature: {}", name)))
+            .ok_or_else(|| exceptions::PyKeyError::new_err(format!("unknown feature: {}", name)))
     }
 
     fn __setitem__(&mut self, name: String, value: String) -> PyResult<()> {

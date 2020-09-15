@@ -1,4 +1,12 @@
-{ pkgs ? import (import ./nix/sources.nix).nixpkgs {} }:
+{
+  pkgs ? import (import ./nix/sources.nix).nixpkgs {
+    config = {
+      allowUnfreePredicate = pkg: builtins.elem (pkgs.lib.getName pkg) [
+        "libtorch"
+      ];
+    };
+  }
+}:
 
 with pkgs;
 

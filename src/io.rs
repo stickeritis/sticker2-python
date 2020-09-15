@@ -35,7 +35,6 @@ impl Model {
         .context("Cannot construct model")?;
 
         vs.load(&config.model.parameters)
-            .map_err(|err| err.compat())
             .context("Cannot load model parameters")?;
 
         vs.freeze();

@@ -13,7 +13,7 @@ use sticker2::config::{Config, TomlRead};
 /// --
 ///
 /// Tagger configuration.
-#[pyclass(name=Config)]
+#[pyclass(name=Config,unsendable)]
 pub struct PyConfig {
     inner: Rc<RefCell<Config>>,
 }
@@ -29,20 +29,20 @@ impl PyConfig {
     #[new]
     fn __new__(path: &str) -> PyResult<Self> {
         let reader = BufReader::new(File::open(path).map_err(|err| {
-            exceptions::IOError::py_err(format!(
+            exceptions::PyIOError::new_err(format!(
                 "cannot read sticker configuration: {}",
                 err.to_string()
             ))
         })?);
         let mut config = Config::from_toml_read(reader).map_err(|err| {
-            exceptions::ValueError::py_err(format!(
+            exceptions::PyValueError::new_err(format!(
                 "cannot read parse configuration: {}",
                 err.to_string()
             ))
         })?;
 
         config.relativize_paths(path).map_err(|err| {
-            exceptions::IOError::py_err(format!("cannot relativize paths: {}", err.to_string()))
+            exceptions::PyIOError::new_err(format!("cannot relativize paths: {}", err.to_string()))
         })?;
 
         Ok(PyConfig {
@@ -72,7 +72,7 @@ impl PyObjectProtocol for PyConfig {
     }
 }
 
-#[pyclass(name=Model)]
+#[pyclass(name=Model,unsendable)]
 pub struct PyModel {
     config: Rc<RefCell<Config>>,
 }
@@ -97,7 +97,7 @@ impl PyObjectProtocol for PyModel {
     }
 }
 
-#[pyclass(name=Labeler)]
+#[pyclass(name=Labeler,unsendable)]
 pub struct PyLabeler {
     config: Rc<RefCell<Config>>,
 }
