@@ -1,4 +1,5 @@
-use std::rc::Rc;
+use std::ops::Deref;
+use std::sync::Arc;
 
 use pyo3::exceptions;
 use pyo3::prelude::*;
@@ -9,10 +10,31 @@ use tch::Device;
 use crate::io::Model;
 use crate::{PyConfig, PySentence};
 
+/// A wrapper of `Tagger` that is `Send + Sync`.
+///
+/// Tensors are not thread-safe in the general case, but
+/// multi-threaded use is safe if no (in-place) modifications are
+/// made:
+///
+/// https://discuss.pytorch.org/t/is-evaluating-the-network-thread-safe/37802
+struct TaggerWrap(Tagger);
+
+unsafe impl Send for TaggerWrap {}
+
+unsafe impl Sync for TaggerWrap {}
+
+impl Deref for TaggerWrap {
+    type Target = Tagger;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[pyclass(name=Annotator)]
 pub struct PyAnnotator {
-    tagger: Rc<Tagger>,
-    tokenizer: Rc<Box<dyn Tokenize>>,
+    tagger: Arc<TaggerWrap>,
+    tokenizer: Arc<Box<dyn Tokenize>>,
 }
 
 #[pymethods]
@@ -20,14 +42,17 @@ impl PyAnnotator {
     #[new]
     fn __new__(config: &PyConfig) -> PyResult<Self> {
         let model = Model::load(&config.as_ref(), Device::Cpu).map_err(|err| {
-            exceptions::IOError::py_err(format!("cannot load sticker2 model: {}", err.to_string()))
+            exceptions::PyIOError::new_err(format!(
+                "cannot load sticker2 model: {}",
+                err.to_string()
+            ))
         })?;
 
         let tagger = Tagger::new(Device::Cpu, model.model, model.encoders);
 
         Ok(PyAnnotator {
-            tagger: Rc::new(tagger),
-            tokenizer: Rc::new(model.tokenizer),
+            tagger: Arc::new(TaggerWrap(tagger)),
+            tokenizer: Arc::new(model.tokenizer),
         })
     }
 
@@ -62,7 +87,7 @@ impl PyAnnotator {
 
         self.tagger
             .tag_sentences(&mut sentences_with_pieces)
-            .map_err(|err| exceptions::RuntimeError::py_err(err.to_string()))?;
+            .map_err(|err| exceptions::PyRuntimeError::new_err(err.to_string()))?;
 
         Ok(sentences_with_pieces
             .into_iter()

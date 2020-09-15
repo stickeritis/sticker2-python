@@ -2,23 +2,19 @@ with import <nixpkgs> {};
 
 let
   sources = import ./nix/sources.nix;
-  danieldk = callPackage sources.danieldk {};
-  mozilla = callPackage "${sources.mozilla}/package-set.nix" {};
-  rust = mozilla.rustChannelOf { channel = "nightly"; date = "2020-04-01"; };
-  sticker = callPackage sources.sticker {};
-  libtorch = danieldk.libtorch.v1_5_0;
+  libtorch = libtorch-bin;
 in mkShell {
   nativeBuildInputs = [
+    cargo
     maturin
     pkgconfig
-    rust.rust
   ];
 
   buildInputs = [
     libtorch
     openssl
     python3
-    sticker.sentencepiece
+    sentencepiece
   ];
 
   LIBTORCH = "${libtorch.dev}";

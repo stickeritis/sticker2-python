@@ -1,14 +1,18 @@
-{ pkgs ? import (import ./nix/sources.nix).nixpkgs {}
+{
+  pkgs ? import (import ./nix/sources.nix).nixpkgs {
+    config = {
+      allowUnfreePredicate = pkg: builtins.elem (pkgs.lib.getName pkg) [
+        "libtorch"
+      ];
+    };
+  }
+
 , python3Packages ? pkgs.python3Packages
 }:
 
 let
   sources = import ./nix/sources.nix;
-  danieldk = pkgs.callPackage sources.danieldk {};
-  mozilla = pkgs.callPackage "${sources.mozilla}/package-set.nix" {};
-  rustc = (mozilla.rustChannelOf { channel = "nightly"; date = "2020-04-01"; }).rust;
-  sticker = pkgs.callPackage sources.sticker {};
-  libtorch = danieldk.libtorch.v1_5_0;
+  libtorch = pkgs.libtorch-bin;
   crateOverrides = with pkgs; defaultCrateOverrides // {
     pyo3 = attr: {
       buildInputs = [ python3Packages.python ];
@@ -17,10 +21,7 @@ let
     sentencepiece-sys = attr: {
       nativeBuildInputs = [ pkgconfig ];
 
-      buildInputs = [
-        (sticker.sentencepiece.override {
-          withGPerfTools = false; }).dev
-      ];
+      buildInputs = [ sentencepiece ];
     };
 
     sticker2-python = attr: rec {
@@ -54,11 +55,9 @@ let
     };
   };
   buildRustCrate = pkgs.buildRustCrate.override {
-    inherit rustc;
-
     defaultCrateOverrides = crateOverrides;
   };
-  crateTools = import "${sources.crate2nix}/tools.nix" {};
+  crateTools = pkgs.callPackage "${sources.crate2nix}/tools.nix" {};
   cargoNix = pkgs.callPackage (crateTools.generatedCargoNix {
     name = "sticker2";
     src = pkgs.nix-gitignore.gitignoreSource [ ".git/" "nix/" "*.nix" ] ./.;
